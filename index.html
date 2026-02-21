@@ -75,7 +75,7 @@
         <label><input type="radio" name="payMethod" value="UPI" checked> UPI (6006049563@ybl)</label><br>
         <label><input type="radio" name="payMethod" value="COD"> Cash on Delivery</label><br><br>
         
-        <button class="btn" style="background: #27ae60;" onclick="placeOrder()">Confirm Order</button>
+        <button id="submitBtn" class="btn" style="background: #27ae60;" onclick="placeOrder()">Confirm Order</button>
     </div>
 </div>
 
@@ -92,6 +92,7 @@
 <div class="container" id="admin-panel">
     <button onclick="location.reload()" style="background: red; color:white; border:none; padding:5px 10px; cursor:pointer;">Logout</button>
     <h2>Welcome Kawnain! Order Management</h2>
+    <p>(Note: Naye orders sheet mein save ho rahe hain)</p>
     <table id="orderTable">
         <thead>
             <tr>
@@ -107,6 +108,9 @@
 </div>
 
 <script>
+    // --- API CONFIGURATION ---
+    const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycby0DArLsLkXQA-IWz97ATIiaF1zxaFxkomrpZFXP0Y_xaUibsmx7zvxXSTtc9ZV09wSNA/exec';
+
     let orders = JSON.parse(localStorage.getItem('orders')) || [];
     let currentItem = {};
 
@@ -116,23 +120,53 @@
         document.getElementById('checkoutModal').style.display = 'block';
     }
 
-    function placeOrder() {
+    async function placeOrder() {
         const name = document.getElementById('custName').value;
         const addr = document.getElementById('custAddress').value;
         const method = document.querySelector('input[name="payMethod"]:checked').value;
+        const btn = document.getElementById('submitBtn');
 
         if(!name || !addr) return alert("Please fill details");
 
-        const newOrder = { name, product: currentItem.name, price: currentItem.price, method, addr };
-        orders.push(newOrder);
-        localStorage.setItem('orders', JSON.stringify(orders));
+        // UI Update: Order process ho raha hai
+        btn.innerText = "Processing...";
+        btn.disabled = true;
 
-        if(method === 'UPI') {
-            alert("Please pay ₹" + currentItem.price + " to 6006049563@ybl. Order will be confirmed after payment.");
-        } else {
-            alert("Order Placed Successfully via Cash on Delivery!");
+        const orderData = {
+            name: name,
+            product: currentItem.name,
+            price: currentItem.price,
+            method: method,
+            addr: addr
+        };
+
+        try {
+            // API CALL: Data Google Sheet mein bhej rahe hain
+            await fetch(GOOGLE_SHEET_URL, {
+                method: 'POST',
+                mode: 'no-cors', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            });
+
+            // Local storage backup
+            orders.push(orderData);
+            localStorage.setItem('orders', JSON.stringify(orders));
+
+            if(method === 'UPI') {
+                alert("Order Data Saved! Please pay ₹" + currentItem.price + " to 6006049563@ybl to confirm.");
+            } else {
+                alert("Order Placed Successfully! Data sent to Google Sheet.");
+            }
+
+        } catch (error) {
+            console.error("Error!", error);
+            alert("Something went wrong, but order saved locally.");
+        } finally {
+            btn.innerText = "Confirm Order";
+            btn.disabled = false;
+            closeModal('checkoutModal');
         }
-        closeModal('checkoutModal');
     }
 
     function showAdminLogin() { document.getElementById('adminLoginModal').style.display = 'block'; }

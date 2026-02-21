@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kawnain Shoes - Premium Footwear</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #e74c3c; --light: #f4f4f4; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--light); }
+        header { background: var(--primary); color: white; padding: 1rem; text-align: center; position: sticky; top: 0; z-index: 100; }
+        
+        /* Layout */
+        .container { max-width: 1100px; margin: 20px auto; padding: 20px; }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        
+        /* Cards */
+        .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
+        .card img { width: 100%; height: 200px; object-fit: cover; border-radius: 5px; }
+        .price { color: var(--accent); font-size: 1.5rem; font-weight: bold; margin: 10px 0; }
+        .btn { background: var(--primary); color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; width: 100%; }
+        
+        /* Modals */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; }
+        .modal-content { background: white; width: 90%; max-width: 400px; margin: 10% auto; padding: 25px; border-radius: 10px; position: relative; }
+        .close { position: absolute; right: 15px; top: 10px; cursor: pointer; font-size: 20px; }
+        
+        /* Admin Panel */
+        #admin-panel { display: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #2c3e50; color: white; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>KAWNAIN SHOES</h1>
+    <p>Premium Quality Below ₹399</p>
+    <button onclick="showAdminLogin()" style="float: right; margin-top: -40px; background: none; border: 1px solid white; color: white; cursor: pointer; padding: 5px 10px;">Admin Login</button>
+</header>
+
+<div class="container" id="main-store">
+    <div class="product-grid">
+        <div class="card">
+            <img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff" alt="Red Sneaker">
+            <h3>Sporty Red Edition</h3>
+            <p class="price">₹349</p>
+            <button class="btn" onclick="openCheckout('Sporty Red Edition', 349)">Buy Now</button>
+        </div>
+        <div class="card">
+            <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30" alt="Casual Shoe">
+            <h3>Classic White Casual</h3>
+            <p class="price">₹399</p>
+            <button class="btn" onclick="openCheckout('Classic White Casual', 399)">Buy Now</button>
+        </div>
+        <div class="card">
+            <img src="https://images.unsplash.com/photo-1491553895911-0055eca6402d" alt="Black Running">
+            <h3>Midnight Runner</h3>
+            <p class="price">₹299</p>
+            <button class="btn" onclick="openCheckout('Midnight Runner', 299)">Buy Now</button>
+        </div>
+    </div>
+</div>
+
+<div id="checkoutModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('checkoutModal')">&times;</span>
+        <h2>Checkout</h2>
+        <p id="item-details"></p>
+        <hr>
+        <input type="text" id="custName" placeholder="Your Name" style="width:94%; padding:10px; margin: 10px 0;"><br>
+        <input type="text" id="custAddress" placeholder="Full Address" style="width:94%; padding:10px; margin: 10px 0;"><br>
+        
+        <h4>Select Payment Method:</h4>
+        <label><input type="radio" name="payMethod" value="UPI" checked> UPI (6006049563@ybl)</label><br>
+        <label><input type="radio" name="payMethod" value="COD"> Cash on Delivery</label><br><br>
+        
+        <button class="btn" style="background: #27ae60;" onclick="placeOrder()">Confirm Order</button>
+    </div>
+</div>
+
+<div id="adminLoginModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('adminLoginModal')">&times;</span>
+        <h2>Admin Login</h2>
+        <input type="text" id="adminUser" placeholder="Admin Name" style="width:94%; padding:10px; margin: 10px 0;">
+        <input type="password" id="adminPass" placeholder="Password" style="width:94%; padding:10px; margin: 10px 0;">
+        <button class="btn" onclick="handleLogin()">Login</button>
+    </div>
+</div>
+
+<div class="container" id="admin-panel">
+    <button onclick="location.reload()" style="background: red; color:white; border:none; padding:5px 10px; cursor:pointer;">Logout</button>
+    <h2>Welcome Kawnain! Order Management</h2>
+    <table id="orderTable">
+        <thead>
+            <tr>
+                <th>Customer</th>
+                <th>Product</th>
+                <th>Price</th>
+                <th>Method</th>
+                <th>Address</th>
+            </tr>
+        </thead>
+        <tbody id="orderBody"></tbody>
+    </table>
+</div>
+
+<script>
+    let orders = JSON.parse(localStorage.getItem('orders')) || [];
+    let currentItem = {};
+
+    function openCheckout(name, price) {
+        currentItem = { name, price };
+        document.getElementById('item-details').innerText = `Buying: ${name} - ₹${price}`;
+        document.getElementById('checkoutModal').style.display = 'block';
+    }
+
+    function placeOrder() {
+        const name = document.getElementById('custName').value;
+        const addr = document.getElementById('custAddress').value;
+        const method = document.querySelector('input[name="payMethod"]:checked').value;
+
+        if(!name || !addr) return alert("Please fill details");
+
+        const newOrder = { name, product: currentItem.name, price: currentItem.price, method, addr };
+        orders.push(newOrder);
+        localStorage.setItem('orders', JSON.stringify(orders));
+
+        if(method === 'UPI') {
+            alert("Please pay ₹" + currentItem.price + " to 6006049563@ybl. Order will be confirmed after payment.");
+        } else {
+            alert("Order Placed Successfully via Cash on Delivery!");
+        }
+        closeModal('checkoutModal');
+    }
+
+    function showAdminLogin() { document.getElementById('adminLoginModal').style.display = 'block'; }
+
+    function handleLogin() {
+        const user = document.getElementById('adminUser').value;
+        const pass = document.getElementById('adminPass').value;
+
+        if(user === "kawnain" && pass === "kawnain737@#") {
+            document.getElementById('main-store').style.display = 'none';
+            document.getElementById('adminLoginModal').style.display = 'none';
+            document.getElementById('admin-panel').style.display = 'block';
+            loadOrders();
+        } else {
+            alert("Galat Details!");
+        }
+    }
+
+    function loadOrders() {
+        const tbody = document.getElementById('orderBody');
+        tbody.innerHTML = '';
+        orders.forEach(o => {
+            tbody.innerHTML += `<tr><td>${o.name}</td><td>${o.product}</td><td>₹${o.price}</td><td>${o.method}</td><td>${o.addr}</td></tr>`;
+        });
+    }
+
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+</script>
+
+</body>
+</html>
